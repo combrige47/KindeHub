@@ -137,6 +137,55 @@ public class BookController {
         bookRepository.delete(book);
         return ResponseEntity.ok("删除成功");
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<String> updateBook(
+            @PathVariable Long id,
+            @RequestParam("title") String title,
+            @RequestParam("author") String author,
+            @RequestParam(value = "cover", required = false) MultipartFile coverFile
+            ) {
+        //查数据库
+        Optional<Book> opt = bookRepository.findById(id);
+        if(opt.isEmpty()){
+            return ResponseEntity.notFound().build();
+        }
+        Book book = opt.get();
+
+        //更新字段
+        book.setTitle(title);
+        book.setAuthor(author);
+        if(coverFile != null && !coverFile.isEmpty()){
+            try{
+                //生成新文件
+                String filename = System.currentTimeMillis() + "_" + coverFile.getOriginalFilename();
+                String projectDir = new File("").getAbsolutePath();
+                File saveDir = new File(projectDir, uploadDir);
+                if (!saveDir.exists()) saveDir.mkdirs();
+                File newPath = new File(saveDir, filename);
+                coverFile.transferTo(newPath);
+                //删除旧封面
+                File oldFile = new File(book.getCoverPath());
+                if(oldFile.exists()) oldFile.delete();
+                book.setCoverPath(newPath.getPath());
+            } catch(IOException e){
+                e.printStackTrace();
+                return ResponseEntity.status(500).body("封面保存失败"+e.getMessage());
+            }
+        }
+        bookRepository.save(book);
+        return ResponseEntity.ok("保存成功");
+    }
+
+    @GetMapping("/search")
+    public List<Book> searchBooks(
+            @RequestParam("keyword") String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+            ){
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        return bookRepository.searchByKeyword(keyword,pageable);
+    }
 }
 
 
