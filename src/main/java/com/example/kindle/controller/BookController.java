@@ -1,12 +1,15 @@
 package com.example.kindle.controller;
 
 import com.example.kindle.entity.Book;
+import com.example.kindle.entity.Category;
 import com.example.kindle.repository.BookRepository;
+import com.example.kindle.repository.CategoryRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
@@ -26,11 +29,13 @@ import java.nio.file.Paths;
 @RequestMapping("/book")
 public class BookController {
     private final BookRepository bookRepository;
+    private final CategoryRepository categoryRepository;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
 
-    public BookController(BookRepository bookRepository) {
+    public BookController(BookRepository bookRepository , CategoryRepository categoryRepository) {
+        this.categoryRepository = categoryRepository;
         this.bookRepository = bookRepository;
     }
 
@@ -38,7 +43,8 @@ public class BookController {
     public String uploadBook(
             @RequestParam("title") String title,
             @RequestParam("author") String author,
-            @RequestParam("cover") MultipartFile coverFile
+            @RequestParam("cover") MultipartFile coverFile,
+            @RequestParam("categoryId") List<Long> categoryIds
     ){
         if(coverFile.isEmpty()){
             return "上传文件为空";
@@ -58,12 +64,14 @@ public class BookController {
             }
             File savePath = new File(saveDir, filename);
             coverFile.transferTo(savePath); //保存到本地
-
+            List<Category> categories = categoryRepository.findAllById(categoryIds);
+            if (categories.isEmpty()) return "分类不存在";
         //保存信息到数据库
         Book book = new Book();
         book.setTitle(title);
         book.setAuthor(author);
         book.setCoverPath(savePath.getPath());
+        book.getCategories().addAll(categories);
         bookRepository.save(book);
         return "上传成功  图书id为" + book.getId();
     }
