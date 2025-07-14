@@ -3,6 +3,10 @@ package com.example.kindle.controller;
 import com.example.kindle.entity.Book;
 import com.example.kindle.repository.BookRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
@@ -103,6 +107,35 @@ public class BookController {
             e.printStackTrace();
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @GetMapping("/page")
+    public Page<Book> GetBooksByPage(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ){
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        return bookRepository.findAll(pageable);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteBook(@PathVariable long id){
+        Optional<Book> optionalBook = bookRepository.findById(id);
+        if(optionalBook.isEmpty()){
+            return ResponseEntity.notFound().build();
+        }
+
+        Book book = optionalBook.get();
+
+        File coverFile = new File(book.getCoverPath());
+        if(coverFile.exists()){
+            if(!coverFile.delete()){
+                return ResponseEntity.status(500).body("删除封面失败");
+            }
+        }
+
+        bookRepository.delete(book);
+        return ResponseEntity.ok("删除成功");
     }
 }
 
