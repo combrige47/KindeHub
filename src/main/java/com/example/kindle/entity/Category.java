@@ -1,6 +1,7 @@
 package com.example.kindle.entity;
 
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 
@@ -17,6 +18,7 @@ public class Category {
     private String name;
 
     @ManyToMany(mappedBy = "categories")
+    @JsonIgnore
     private Set<Book> books = new HashSet<>();
 
     public void setId(Long id) {

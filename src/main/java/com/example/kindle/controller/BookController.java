@@ -20,8 +20,7 @@ import org.springframework.http.ResponseEntity;
 import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -151,7 +150,8 @@ public class BookController {
             @PathVariable Long id,
             @RequestParam("title") String title,
             @RequestParam("author") String author,
-            @RequestParam(value = "cover", required = false) MultipartFile coverFile
+            @RequestParam(value = "cover", required = false) MultipartFile coverFile,
+            @RequestParam(required = false) List<Long> categoryId
             ) {
         //查数据库
         Optional<Book> opt = bookRepository.findById(id);
@@ -181,6 +181,12 @@ public class BookController {
                 return ResponseEntity.status(500).body("封面保存失败"+e.getMessage());
             }
         }
+        //更新分类
+        if(categoryId != null && !categoryId.isEmpty()){
+            Set<Category> categoryIdSet = new HashSet<>(categoryRepository.findAllById(categoryId));
+            book.setCategories(categoryIdSet);
+        }
+
         bookRepository.save(book);
         return ResponseEntity.ok("保存成功");
     }
@@ -193,6 +199,17 @@ public class BookController {
             ){
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         return bookRepository.searchByKeyword(keyword,pageable);
+    }
+
+    @GetMapping("/by-category/{categoryId}")
+    public ResponseEntity<List<Book>> searchBooksByCategory(@PathVariable Long categoryId){
+        Optional<Category> opt = categoryRepository.findById(categoryId);
+        if(opt.isEmpty()){
+            return ResponseEntity.notFound().build();
+        }
+        Category category = opt.get();
+        List<Book> books = new ArrayList<>(category.getBooks());
+        return ResponseEntity.ok(books);
     }
 }
 
