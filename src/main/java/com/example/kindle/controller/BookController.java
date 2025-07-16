@@ -53,8 +53,7 @@ public class BookController {
         String filename = System.currentTimeMillis() + "_" + coverFile.getOriginalFilename();
 
         //文件保存路径
-            String projectDir = new File("").getAbsolutePath();
-            File saveDir = new File(projectDir, uploadDir);
+            File saveDir = new File(uploadDir);
             if (!saveDir.exists()) {
                 boolean created = saveDir.mkdirs();
                 if (!created) {
@@ -93,8 +92,7 @@ public class BookController {
     @GetMapping("/image/{filename}")
     public ResponseEntity<Resource> downloadImage(@PathVariable("filename") String filename){
         try{
-            String projectDir = new File("").getAbsolutePath(); // 获取项目根目录
-            File saveDir = new File(projectDir, uploadDir);     // 拼接 uploads/ 路径
+            File saveDir = new File(uploadDir);
             Path filePath = Paths.get(uploadDir).resolve(filename).normalize();
             Resource resource = new UrlResource(filePath.toUri());
 
@@ -167,8 +165,7 @@ public class BookController {
             try{
                 //生成新文件
                 String filename = System.currentTimeMillis() + "_" + coverFile.getOriginalFilename();
-                String projectDir = new File("").getAbsolutePath();
-                File saveDir = new File(projectDir, uploadDir);
+                File saveDir = new File(uploadDir);
                 if (!saveDir.exists()) saveDir.mkdirs();
                 File newPath = new File(saveDir, filename);
                 coverFile.transferTo(newPath);
