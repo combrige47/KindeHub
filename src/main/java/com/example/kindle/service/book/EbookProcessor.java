@@ -1,4 +1,4 @@
-package com.example.kindle.service.ebook; // 创建一个新的 ebook 子包
+package com.example.kindle.service.book; // 创建一个新的 ebook 子包
 
 import java.io.IOException;
 import java.io.InputStream;

@@ -1,4 +1,4 @@
-package com.example.kindle.service.ebook;
+package com.example.kindle.service.book;
 
 import nl.siegmann.epublib.domain.Book; // 导入 epublib 库的 Book 类，代表一个电子书对象
 import nl.siegmann.epublib.epub.EpubReader; // 导入 epublib 库的 EpubReader，用于读取 EPUB 文件

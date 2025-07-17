@@ -4,6 +4,7 @@ import com.example.kindle.entity.Book;
 import com.example.kindle.entity.Category;
 import com.example.kindle.repository.BookRepository;
 import com.example.kindle.repository.CategoryRepository;
+import com.example.kindle.service.BookService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,89 +30,54 @@ import java.nio.file.Paths;
 public class BookController {
     private final BookRepository bookRepository;
     private final CategoryRepository categoryRepository;
+    private final BookService bookService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
 
-    public BookController(BookRepository bookRepository , CategoryRepository categoryRepository) {
+    public BookController(BookRepository bookRepository , CategoryRepository categoryRepository, BookService bookService) {
         this.categoryRepository = categoryRepository;
         this.bookRepository = bookRepository;
+        this.bookService = bookService;
     }
 
     @PostMapping("/upload")
-    public String uploadBook(
+    public ResponseEntity<String> uploadBook(
             @RequestParam("title") String title,
             @RequestParam("author") String author,
             @RequestParam("cover") MultipartFile coverFile,
             @RequestParam("categoryId") List<Long> categoryIds
     ){
         if(coverFile.isEmpty()){
-            return "上传文件为空";
+            return ResponseEntity.badRequest().body("上传文件为空");
         }
         try{
-        //文件名处理(加时间戳防重)
-        String filename = System.currentTimeMillis() + "_" + coverFile.getOriginalFilename();
-
-        //文件保存路径
-            File saveDir = new File(uploadDir);
-            if (!saveDir.exists()) {
-                boolean created = saveDir.mkdirs();
-                if (!created) {
-                    return "上传失败: 无法创建目录 " + saveDir.getAbsolutePath();
-                }
-            }
-            File savePath = new File(saveDir, filename);
-            coverFile.transferTo(savePath); //保存到本地
-            List<Category> categories = categoryRepository.findAllById(categoryIds);
-            if (categories.isEmpty()) return "分类不存在";
-        //保存信息到数据库
-        Book book = new Book();
-        book.setTitle(title);
-        book.setAuthor(author);
-        book.setCoverPath(savePath.getPath());
-        book.getCategories().addAll(categories);
-        bookRepository.save(book);
-        return "上传成功  图书id为" + book.getId();
+        Book book = bookService.uploadBook(title,author,coverFile,categoryIds,uploadDir);
+        return ResponseEntity.ok("上传成功，id为" + book.getId());
     }
         catch (IOException e){
         e.printStackTrace();
-        return "上传失败:" + e.getMessage();
+        return ResponseEntity.status(500).body("上传失败:"+e.getMessage());
+        }catch (IllegalArgumentException e) { // 捕获服务层抛出的业务异常
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @GetMapping("/all")
     public List<Book> getAllBooks(){
-        return bookRepository.findAll();
+        return bookService.getAllBooks();
     }
 
     @GetMapping("/{id}")
-    public Book getBookById(@PathVariable("id") long id){
-        return bookRepository.findById(id).orElse(null);
+    public ResponseEntity<Book> getBookById(@PathVariable("id") long id){
+        return bookService.getBookById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/image/{filename}")
-    public ResponseEntity<Resource> downloadImage(@PathVariable("filename") String filename){
-        try{
-            File saveDir = new File(uploadDir);
-            Path filePath = Paths.get(uploadDir).resolve(filename).normalize();
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if(!resource.exists()){
-                return ResponseEntity.notFound().build();
-            }
-
-            String contentType = "application/octet-stream";
-            if(filename.endsWith(".png")) contentType = "image/png";
-            else if(filename.endsWith(".jpg")||filename.endsWith(".jpeg")) contentType = "image/jpeg";
-            else if(filename.endsWith(".gif")) contentType = "image/gif";
-
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(contentType))
-                    .body(resource);
-        } catch (MalformedURLException e){
-            e.printStackTrace();
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<Resource> downloadImage(@PathVariable("filename") String filename) throws IOException {
+        return bookService.downloadImage(filename,uploadDir);
     }
 
     @GetMapping("/page")
@@ -120,27 +86,16 @@ public class BookController {
             @RequestParam(defaultValue = "10") int size
     ){
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        return bookRepository.findAll(pageable);
+        return bookService.getBookByPage(pageable);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteBook(@PathVariable long id){
-        Optional<Book> optionalBook = bookRepository.findById(id);
-        if(optionalBook.isEmpty()){
+        if(bookService.deleteBook(id, uploadDir)){ // 传入 uploadDir
+            return ResponseEntity.ok("删除成功");
+        } else {
             return ResponseEntity.notFound().build();
         }
-
-        Book book = optionalBook.get();
-
-        File coverFile = new File(book.getCoverPath());
-        if(coverFile.exists()){
-            if(!coverFile.delete()){
-                return ResponseEntity.status(500).body("删除封面失败");
-            }
-        }
-
-        bookRepository.delete(book);
-        return ResponseEntity.ok("删除成功");
     }
 
     @PutMapping("/{id}")
@@ -150,42 +105,8 @@ public class BookController {
             @RequestParam("author") String author,
             @RequestParam(value = "cover", required = false) MultipartFile coverFile,
             @RequestParam(required = false) List<Long> categoryId
-            ) {
-        //查数据库
-        Optional<Book> opt = bookRepository.findById(id);
-        if(opt.isEmpty()){
-            return ResponseEntity.notFound().build();
-        }
-        Book book = opt.get();
-
-        //更新字段
-        book.setTitle(title);
-        book.setAuthor(author);
-        if(coverFile != null && !coverFile.isEmpty()){
-            try{
-                //生成新文件
-                String filename = System.currentTimeMillis() + "_" + coverFile.getOriginalFilename();
-                File saveDir = new File(uploadDir);
-                if (!saveDir.exists()) saveDir.mkdirs();
-                File newPath = new File(saveDir, filename);
-                coverFile.transferTo(newPath);
-                //删除旧封面
-                File oldFile = new File(book.getCoverPath());
-                if(oldFile.exists()) oldFile.delete();
-                book.setCoverPath(newPath.getPath());
-            } catch(IOException e){
-                e.printStackTrace();
-                return ResponseEntity.status(500).body("封面保存失败"+e.getMessage());
-            }
-        }
-        //更新分类
-        if(categoryId != null && !categoryId.isEmpty()){
-            Set<Category> categoryIdSet = new HashSet<>(categoryRepository.findAllById(categoryId));
-            book.setCategories(categoryIdSet);
-        }
-
-        bookRepository.save(book);
-        return ResponseEntity.ok("保存成功");
+            ) throws IOException {
+        return bookService.updateBook(id,title,author,coverFile,categoryId,uploadDir);
     }
 
     @GetMapping("/search")
@@ -195,18 +116,17 @@ public class BookController {
             @RequestParam(defaultValue = "10") int size
             ){
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
-        return bookRepository.searchByKeyword(keyword,pageable);
+        return bookService.searchBooks(keyword,pageable);
     }
 
     @GetMapping("/by-category/{categoryId}")
-    public ResponseEntity<List<Book>> searchBooksByCategory(@PathVariable Long categoryId){
-        Optional<Category> opt = categoryRepository.findById(categoryId);
-        if(opt.isEmpty()){
-            return ResponseEntity.notFound().build();
-        }
-        Category category = opt.get();
-        List<Book> books = new ArrayList<>(category.getBooks());
-        return ResponseEntity.ok(books);
+    public ResponseEntity<List<Book>> searchBooksByCategory(
+            @PathVariable Long categoryId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size
+    ){
+        Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
+        return bookService.searchBooksByCategory(categoryId,pageable);
     }
 }
 

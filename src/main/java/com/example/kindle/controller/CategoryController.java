@@ -3,6 +3,7 @@ package com.example.kindle.controller;
 import com.example.kindle.entity.Book;
 import com.example.kindle.entity.Category;
 import com.example.kindle.repository.CategoryRepository;
+import com.example.kindle.service.CategoryService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -20,54 +21,38 @@ import java.util.Optional;
 public class CategoryController {
 
     private final CategoryRepository categoryRepository;
+    @Autowired
+    private CategoryService categoryService;
 
     public CategoryController(CategoryRepository categoryRepository) {
         this.categoryRepository = categoryRepository;
     }
 
-    @Autowired
-    private CategoryRepository CategoryRepository;
     @GetMapping
     public Page<Category> getCategory(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size
     ) {
-        return categoryRepository.findAll(PageRequest.of(page, size));
+        return categoryService.getCategory(page,size);
     }
 
 
     // 创建分类
     @PostMapping("/create")
     public String createCategory(@RequestParam("name") String name) {
-        Category category = new Category();
-        category.setName(name);
-        categoryRepository.save(category);
-        return "分类创建成功，Id:" + category.getId();
+        return categoryService.createCategory(name);
     }
 
     // 查询所有分类
     @GetMapping("/all")
     public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+        return categoryService.findAll();
     }
 
     //删除分类
     @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteCategory(@PathVariable Long id) {
-        Optional<Category> categoryOpt = categoryRepository.findById(id);
-        if (categoryOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-
-        Category category = categoryOpt.get();
-        //解除与图书绑定
-        for(Book book : category.getBooks()) {
-            book.getCategories().remove(category);
-        }
-        category.getBooks().clear();
-        categoryRepository.delete(category);
-
-        return ResponseEntity.ok("分类删除成功");
+        return categoryService.deteleCategory(id);
     }
 }
