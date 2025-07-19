@@ -42,6 +42,38 @@ public class BookService {
 
     @Transactional
     public Book uploadEbookFile(MultipartFile ebookFile,List<Long> categoryIds) throws IOException {
+        String extension = getExtension(ebookFile);
+
+        Optional<EbookProcessor> processorOpt = ebookProcessorFactory.getProcessor(extension);
+        if(processorOpt.isEmpty()) {
+            throw new IllegalArgumentException("不支持该电子书格式:"+extension);
+        }
+        String uniqueFilename = UUID.randomUUID().toString()+"."+extension;
+        EbookProcessor processor = processorOpt.get();
+
+        Path ebookSaveDir = Paths.get(ebookDir);
+        Map<String, String> metadata = processor.process(ebookFile.getInputStream(), uniqueFilename, ebookSaveDir);
+        String title = metadata.get("title");
+        String author = metadata.get("author");
+        String filePath = metadata.get("filePath");
+        String originalFilename = ebookFile.getOriginalFilename();
+
+        Book book = new Book();
+        book.setTitle(title);
+        book.setAuthor(author);
+        book.setFilePath(filePath);
+        book.setOriginalFilename(originalFilename);
+
+        List<Category> categories = categoryRepository.findAllById(categoryIds);
+        if(categories.isEmpty() &&  !categoryIds.isEmpty()) {
+            throw new IllegalArgumentException("分类不存在");
+        }
+
+        book.getCategories().addAll(categories);
+        return bookRepository.save(book);
+    }
+
+    private static String getExtension(MultipartFile ebookFile) {
         if(ebookFile.isEmpty()) {
             throw new IllegalArgumentException("上传电子书为空");
         }
@@ -57,31 +89,7 @@ public class BookService {
         } else {
             throw new IllegalArgumentException("无法识别扩展名");
         }
-
-        Optional<EbookProcessor> processorOpt = ebookProcessorFactory.getProcessor(extension);
-        if(processorOpt.isEmpty()) {
-            throw new IllegalArgumentException("不支持该电子书格式:"+extension);
-        }
-        EbookProcessor processor = processorOpt.get();
-
-        Path ebookSaveDir = Paths.get(ebookDir,filename);
-        Map<String, String> metadata = processor.process(ebookFile.getInputStream(), filename, ebookSaveDir);
-        String title = metadata.get("title");
-        String author = metadata.get("author");
-        String filePath = metadata.get("filePath");
-
-        Book book = new Book();
-        book.setTitle(title);
-        book.setAuthor(author);
-        book.setFilePath(filePath);
-
-        List<Category> categories = categoryRepository.findAll();
-        if(categories.isEmpty() &&  !categoryIds.isEmpty()) {
-            throw new IllegalArgumentException("分类不存在");
-        }
-
-        book.getCategories().addAll(categories);
-        return bookRepository.save(book);
+        return extension;
     }
 
 

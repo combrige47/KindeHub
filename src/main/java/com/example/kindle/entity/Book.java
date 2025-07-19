@@ -19,7 +19,9 @@ public class Book {
     private String title;
     private String author;
     private String coverPath;
+
     private String filePath;
+    private String originalFilename;
 
     @ManyToMany
     @JoinTable(
