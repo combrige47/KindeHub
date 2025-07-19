@@ -5,7 +5,10 @@ import com.example.kindle.entity.Book;
 import com.example.kindle.entity.Category;
 import com.example.kindle.repository.BookRepository;
 import com.example.kindle.repository.CategoryRepository;
+import com.example.kindle.service.book.EbookProcessor;
+import com.example.kindle.service.book.EbookProcessorFactory;
 import jakarta.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.data.domain.Page;
@@ -27,12 +30,60 @@ import java.util.*;
 public class BookService {
     private final BookRepository bookRepository;
     private final CategoryRepository categoryRepository;
-
+    private final EbookProcessorFactory ebookProcessorFactory;
+    @Value("${file.ebook-dir}")
+    private String ebookDir; // 电子书文件和封面图片将保存在这里
     //构造
-    public BookService(BookRepository bookRepository, CategoryRepository categoryRepository) {
+    public BookService(BookRepository bookRepository, CategoryRepository categoryRepository, EbookProcessorFactory ebookProcessorFactory) {
         this.bookRepository = bookRepository;
         this.categoryRepository = categoryRepository;
+        this.ebookProcessorFactory = ebookProcessorFactory;
     }
+
+    @Transactional
+    public Book uploadEbookFile(MultipartFile ebookFile,List<Long> categoryIds) throws IOException {
+        if(ebookFile.isEmpty()) {
+            throw new IllegalArgumentException("上传电子书为空");
+        }
+        String filename = ebookFile.getOriginalFilename();
+        if(filename == null || filename.isEmpty()) {
+            throw new IllegalArgumentException("文件名为空");
+        }
+        //获取文件扩展名
+        String extension = "";
+        int dotIndex = filename.lastIndexOf(".");
+        if(dotIndex > 0 && dotIndex < filename.length() - 1) {
+            extension = filename.substring(dotIndex + 1);
+        } else {
+            throw new IllegalArgumentException("无法识别扩展名");
+        }
+
+        Optional<EbookProcessor> processorOpt = ebookProcessorFactory.getProcessor(extension);
+        if(processorOpt.isEmpty()) {
+            throw new IllegalArgumentException("不支持该电子书格式:"+extension);
+        }
+        EbookProcessor processor = processorOpt.get();
+
+        Path ebookSaveDir = Paths.get(ebookDir,filename);
+        Map<String, String> metadata = processor.process(ebookFile.getInputStream(), filename, ebookSaveDir);
+        String title = metadata.get("title");
+        String author = metadata.get("author");
+        String filePath = metadata.get("filePath");
+
+        Book book = new Book();
+        book.setTitle(title);
+        book.setAuthor(author);
+        book.setFilePath(filePath);
+
+        List<Category> categories = categoryRepository.findAll();
+        if(categories.isEmpty() &&  !categoryIds.isEmpty()) {
+            throw new IllegalArgumentException("分类不存在");
+        }
+
+        book.getCategories().addAll(categories);
+        return bookRepository.save(book);
+    }
+
 
     @Transactional
     public Book uploadBook(String title, String author, MultipartFile coverFile, List<Long> categoryIds, String uploadDir) throws IOException {

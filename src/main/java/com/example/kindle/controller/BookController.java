@@ -28,17 +28,21 @@ import java.nio.file.Paths;
 @RestController
 @RequestMapping("/book")
 public class BookController {
-    private final BookRepository bookRepository;
-    private final CategoryRepository categoryRepository;
     private final BookService bookService;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
 
     public BookController(BookRepository bookRepository , CategoryRepository categoryRepository, BookService bookService) {
-        this.categoryRepository = categoryRepository;
-        this.bookRepository = bookRepository;
         this.bookService = bookService;
+    }
+
+    @PostMapping("/up")
+    public Book upBook(
+            @RequestParam("ebook") MultipartFile ebookFile,
+            @RequestParam("categoryId") List<Long> categoryIds
+    ) throws IOException {
+        return bookService.uploadEbookFile(ebookFile, categoryIds);
     }
 
     @PostMapping("/upload")
