@@ -13,4 +13,6 @@ public class FileProperties {
     private String uploadDir;
 
     private String ebookDir;
+
+    private String coverDir;
 }

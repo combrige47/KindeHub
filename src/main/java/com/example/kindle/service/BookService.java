@@ -31,8 +31,12 @@ public class BookService {
     private final BookRepository bookRepository;
     private final CategoryRepository categoryRepository;
     private final EbookProcessorFactory ebookProcessorFactory;
+    @Value("${file.upload-dir}")
+    private String uploadDir;
     @Value("${file.ebook-dir}")
     private String ebookDir; // 电子书文件和封面图片将保存在这里
+    @Value("${file.cover-dir}")
+    private String coverDir;
     //构造
     public BookService(BookRepository bookRepository, CategoryRepository categoryRepository, EbookProcessorFactory ebookProcessorFactory) {
         this.bookRepository = bookRepository;
@@ -51,17 +55,19 @@ public class BookService {
         String uniqueFilename = UUID.randomUUID().toString()+"."+extension;
         EbookProcessor processor = processorOpt.get();
 
-        Path ebookSaveDir = Paths.get(ebookDir);
-        Map<String, String> metadata = processor.process(ebookFile.getInputStream(), uniqueFilename, ebookSaveDir);
+        Path saveDir = Paths.get(uploadDir);
+        Map<String, String> metadata = processor.process(ebookFile.getInputStream(), uniqueFilename, saveDir);
         String title = metadata.get("title");
         String author = metadata.get("author");
         String filePath = metadata.get("filePath");
+        String coverPath = metadata.get("coverPath");
         String originalFilename = ebookFile.getOriginalFilename();
 
         Book book = new Book();
         book.setTitle(title);
         book.setAuthor(author);
         book.setFilePath(filePath);
+        book.setCoverPath(coverPath);
         book.setOriginalFilename(originalFilename);
 
         List<Category> categories = categoryRepository.findAllById(categoryIds);

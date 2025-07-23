@@ -9,6 +9,7 @@ import java.io.InputStream; // 输入流
 import java.nio.file.Files; // 文件操作工具类
 import java.nio.file.Path; // 路径对象
 import java.nio.file.StandardCopyOption; // 文件复制选项
+import java.util.Arrays;
 import java.util.HashMap; // Map 实现
 import java.util.List; // 列表
 import java.util.Map; // 映射
@@ -49,29 +50,30 @@ public class EpubProcessor implements EbookProcessor { // 实现 EbookProcessor 
             Files.createDirectories(saveDirectory);
         }
 
-        // 2. 生成唯一的文件名，保留原始扩展名
-        // 使用当前时间戳作为前缀，结合原始文件名，确保文件名的唯一性，避免覆盖现有文件
-        String uniqueFilename = System.currentTimeMillis() + "_" + originalFilename;
-        Path filePath = saveDirectory.resolve(uniqueFilename); // 构建完整的保存路径
+        Path ebookDir = saveDirectory.resolve("ebook");
+        if (!Files.exists(ebookDir)) {
+            Files.createDirectories(ebookDir);
+        }
+
+        String uniqueFilename = String.valueOf(System.currentTimeMillis());
+        String uniqueEbookFilename = uniqueFilename + "_" + originalFilename;
+        Path ebookPath = ebookDir.resolve(uniqueEbookFilename);
 
         // 3. 保存电子书文件
-        // 将输入流中的电子书内容复制到目标文件路径。
-        // StandardCopyOption.REPLACE_EXISTING 表示如果文件已存在则替换
-        Files.copy(inputStream, filePath, StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(inputStream, ebookPath, StandardCopyOption.REPLACE_EXISTING);
 
         // 4. 使用 epublib 读取电子书元数据
-        // 使用 try-with-resources 确保流在操作完成后自动关闭
-        try (InputStream bookInputStream = Files.newInputStream(filePath)) { // 重新打开已保存的文件流来读取EPUB内容
-            EpubReader epubReader = new EpubReader(); // 创建 EpubReader 实例
-            Book epubBook = epubReader.readEpub(bookInputStream); // 读取 EPUB 文件并解析成 epublib 的 Book 对象
+        try (InputStream bookInputStream = Files.newInputStream(ebookPath)) {
+            EpubReader epubReader = new EpubReader();
+            Book epubBook = epubReader.readEpub(bookInputStream);
 
             // 4.1 提取标题
             String title = epubBook.getTitle(); // 获取 EPUB 文件的标题
             if (title == null || title.isEmpty()) {
-                // 如果 EPUB 文件内部没有明确的标题，则尝试从原始文件名中截取作为标题
+
                 title = originalFilename.substring(0, originalFilename.lastIndexOf('.'));
             }
-            metadata.put("title", title); // 将标题存入元数据 Map
+            metadata.put("title", title);
 
             // 4.2 提取作者
             List<String> authors = epubBook.getMetadata().getAuthors().stream()
@@ -85,19 +87,33 @@ public class EpubProcessor implements EbookProcessor { // 实现 EbookProcessor 
             metadata.put("author", author); // 将作者存入元数据 Map
 
             // 4.3 保存文件路径
-            metadata.put("filePath", filePath.toString()); // 将电子书在服务器上的实际存储路径存入元数据 Map
+            metadata.put("filePath", ebookPath.toString()); // 将电子书在服务器上的实际存储路径存入元数据 Map
 
-            // TODO: 考虑提取封面图片并保存
-            // 这一部分是未来可以扩展的功能。EPUB 文件中通常包含封面图片，
-            // 我们可以提取它并保存为独立的图片文件，然后将图片路径存入 Book 实体。
-            // if (epubBook.getCoverImage() != null) {
-            //     // 处理封面图片逻辑，保存到封面目录，并更新 Book 实体中的 coverPath
-            // }
+            //4.4 提取封面并保存
+            Path coverDir = saveDirectory.resolve("cover");
+            if (!Files.exists(coverDir)) {
+                Files.createDirectories(coverDir);
+            }
+            if(epubBook.getCoverImage() != null) {
+                try{
+                byte[] coverImageData = epubBook.getCoverImage().getData();
+//                String type = String.valueOf(epubBook.getCoverImage().getMediaType());
+                String coverFileName = "cover_" + uniqueFilename + ".jpg" ;
+                Path coverPath = coverDir.resolve(coverFileName);
+
+                Files.write(coverPath, coverImageData);
+                metadata.put("coverPath", coverPath.toString());
+            } catch(IOException e){
+                    System.out.println("处理封面图片失败"+e.getMessage());
+                    metadata.put("coverPath", "default_cover.jpg");
+                }
+
+            }
 
         } catch (Exception e) {
             // 5. 错误处理：如果解析 EPUB 失败 (例如文件损坏或不是有效的 EPUB)，
             // 删除已经保存到服务器的文件，避免留下无效文件
-            Files.deleteIfExists(filePath);
+            Files.deleteIfExists(ebookPath);
             // 抛出 IOException，告知调用者处理失败，并包含原始异常信息
             throw new IOException("解析EPUB文件失败: " + e.getMessage(), e);
         }
