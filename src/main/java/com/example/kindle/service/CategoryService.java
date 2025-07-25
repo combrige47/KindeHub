@@ -17,11 +17,22 @@ import java.util.Optional;
 public class CategoryService {
     private CategoryRepository categoryRepository;
 
-
+    /**
+     * 按照页搜索
+     * @param page 第几页
+     * @param size 每页的大小
+     * @return 返回按照页搜索后的结果
+     */
     public Page<Category> getCategory(int page, int size) {
         return categoryRepository.findAll(PageRequest.of(page, size));
     }
 
+    /**
+     * 创建分类
+     * @param name 分类名
+     * @return 返回创建后信息
+     */
+    @Transactional
     public String createCategory(String name) {
         Category category = new Category();
         category.setName(name);
@@ -29,8 +40,18 @@ public class CategoryService {
         return "分类创建成功，Id:" + category.getId();
     }
 
+    /**
+     * 获取所有分类
+     * @return 返回所有分类
+     */
+    @Transactional
     public List<Category> findAll() {return categoryRepository.findAll();}
 
+    /**
+     * 删除分类
+     * @param id 对应分类id
+     * @return 返回删除后信息
+     */
     @Transactional
     public ResponseEntity<String> deteleCategory(Long id) {
         Optional<Category> categoryOpt = categoryRepository.findById(id);

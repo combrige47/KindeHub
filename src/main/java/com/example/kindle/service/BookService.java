@@ -44,6 +44,13 @@ public class BookService {
         this.ebookProcessorFactory = ebookProcessorFactory;
     }
 
+    /**
+     * 上传电子书
+     * @param ebookFile 上传电子书文件
+     * @param categoryIds 分类
+     * @return 返回上传后对应的Book类
+     * @throws IOException
+     */
     @Transactional
     public Book uploadEbookFile(MultipartFile ebookFile,List<Long> categoryIds) throws IOException {
         String extension = getExtension(ebookFile);
@@ -79,6 +86,11 @@ public class BookService {
         return bookRepository.save(book);
     }
 
+    /**
+     * 获取扩展名
+     * @param ebookFile 电子书文件
+     * @return 返回电子书扩展名
+     */
     private static String getExtension(MultipartFile ebookFile) {
         if(ebookFile.isEmpty()) {
             throw new IllegalArgumentException("上传电子书为空");
@@ -98,7 +110,16 @@ public class BookService {
         return extension;
     }
 
-
+    /**
+     * 不上传文件，仅上传电子书信息
+     * @param title 标题
+     * @param author 作者
+     * @param coverFile 封面
+     * @param categoryIds 分类
+     * @param uploadDir 下载文件夹
+     * @return 返回上传后的Book类
+     * @throws IOException
+     */
     @Transactional
     public Book uploadBook(String title, String author, MultipartFile coverFile, List<Long> categoryIds, String uploadDir) throws IOException {
         String filename = System.currentTimeMillis() + "_"  + coverFile.getOriginalFilename();
@@ -121,16 +142,39 @@ public class BookService {
         return bookRepository.save(book);
     }
 
+    /**
+     * 获取所有Book类
+     * @return 返回所有电子书
+     */
     public List<Book> getAllBooks() {
         return bookRepository.findAll();
     }
+
+    /**
+     * 通过id查找电子书
+     * @param id 电子书对应id
+     * @return 返回id对应的电子书
+     */
     public Optional<Book> getBookById(Long id) {
         return bookRepository.findById(id);
     }
+
+    /**
+     * 按页获取所有电子书
+     * @param pageable 对应页
+     * @return 返回按照页的电子书
+     */
     public Page<Book> getBookByPage(Pageable pageable) {
         return bookRepository.findAll(pageable);
     }
 
+    /**
+     * 获取封面图片
+     * @param filename 对应封面文件名称
+     * @param uploadDir 封面保存文件夹
+     * @return 返回对应封面图片
+     * @throws IOException
+     */
     @Transactional
     public ResponseEntity<Resource> downloadImage(String filename,String uploadDir) throws IOException {
         try{
@@ -156,7 +200,12 @@ public class BookService {
         }
     }
 
-
+    /**
+     * 删除对应电子书
+     * @param id 对应电子书id
+     * @param uploadDir
+     * @return 删除成功返回1 失败返回0
+     */
     @Transactional
     public boolean deleteBook(Long id,String uploadDir) {
         Optional<Book> Optbook = bookRepository.findById(id);
@@ -175,6 +224,17 @@ public class BookService {
         return true;
     }
 
+    /**
+     * 更新电子书信息
+     * @param id 对应电子书id
+     * @param title 修改后的名称
+     * @param author 修改后的作家
+     * @param coverFile
+     * @param categoryId 修改后的分类
+     * @param uploadDir
+     * @return 返回修改后的信息
+     * @throws IOException
+     */
     @Transactional
     public ResponseEntity<String> updateBook(Long id, String title, String author, MultipartFile coverFile, List<Long> categoryId, String uploadDir) throws IOException {
         Optional<Book> opt = bookRepository.findById(id);
@@ -212,11 +272,23 @@ public class BookService {
         return ResponseEntity.ok("保存成功");
     }
 
+    /**
+     * 搜索电子书
+     * @param keyword 搜索电子书的关键词
+     * @param pageable
+     * @return 返回按照关键词搜索后的电子书
+     */
     @Transactional
     public List<Book> searchBooks(String keyword, Pageable pageable) {
         return bookRepository.searchByKeyword(keyword,pageable);
     }
 
+    /**\
+     * 通过分类查找电子书
+     * @param categoryId 对应分类
+     * @param pageable
+     * @return 返回对应分类的电子书
+     */
     @Transactional
     public ResponseEntity<List<Book>> searchBooksByCategory(Long categoryId, Pageable pageable) {
         Optional<Category> opt = categoryRepository.findById(categoryId);
