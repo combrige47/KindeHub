@@ -1,7 +1,6 @@
 package com.example.kindle.controller;
 
 import com.example.kindle.entity.Book;
-import com.example.kindle.entity.Category;
 import com.example.kindle.repository.BookRepository;
 import com.example.kindle.repository.CategoryRepository;
 import com.example.kindle.service.BookService;
@@ -10,20 +9,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.repository.support.SimpleJpaRepository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-import java.io.File;
 import java.io.IOException;
-import java.net.MalformedURLException;
 import java.util.*;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 
 @RestController
 @RequestMapping("/book")
@@ -60,7 +52,7 @@ public class BookController {
         return ResponseEntity.ok("上传成功，id为" + book.getId());
     }
         catch (IOException e){
-        e.printStackTrace();
+        e.fillInStackTrace();
         return ResponseEntity.status(500).body("上传失败:"+e.getMessage());
         }catch (IllegalArgumentException e) { // 捕获服务层抛出的业务异常
             return ResponseEntity.badRequest().body(e.getMessage());

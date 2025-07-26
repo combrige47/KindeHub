@@ -5,6 +5,7 @@ import com.example.kindle.entity.Book;
 import com.example.kindle.entity.Category;
 import com.example.kindle.repository.CategoryRepository;
 import jakarta.transaction.Transactional;
+import lombok.Setter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Optional;
 
+@Setter
 @Service
 public class CategoryService {
     private CategoryRepository categoryRepository;
@@ -53,7 +55,7 @@ public class CategoryService {
      * @return 返回删除后信息
      */
     @Transactional
-    public ResponseEntity<String> deteleCategory(Long id) {
+    public ResponseEntity<String> deleteCategory(Long id) {
         Optional<Category> categoryOpt = categoryRepository.findById(id);
         if (categoryOpt.isEmpty()) {
             return ResponseEntity.notFound().build();
@@ -69,4 +71,5 @@ public class CategoryService {
 
         return ResponseEntity.ok("分类删除成功");
     }
+
 }

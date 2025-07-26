@@ -49,7 +49,6 @@ public class BookService {
      * @param ebookFile 上传电子书文件
      * @param categoryIds 分类
      * @return 返回上传后对应的Book类
-     * @throws IOException
      */
     @Transactional
     public Book uploadEbookFile(MultipartFile ebookFile,List<Long> categoryIds) throws IOException {
@@ -118,7 +117,6 @@ public class BookService {
      * @param categoryIds 分类
      * @param uploadDir 下载文件夹
      * @return 返回上传后的Book类
-     * @throws IOException
      */
     @Transactional
     public Book uploadBook(String title, String author, MultipartFile coverFile, List<Long> categoryIds, String uploadDir) throws IOException {
@@ -173,7 +171,6 @@ public class BookService {
      * @param filename 对应封面文件名称
      * @param uploadDir 封面保存文件夹
      * @return 返回对应封面图片
-     * @throws IOException
      */
     @Transactional
     public ResponseEntity<Resource> downloadImage(String filename,String uploadDir) throws IOException {
@@ -195,7 +192,7 @@ public class BookService {
                     .contentType(MediaType.parseMediaType(contentType))
                     .body(resource);
         } catch (MalformedURLException e){
-            e.printStackTrace();
+            e.fillInStackTrace();
             return ResponseEntity.notFound().build();
         }
     }
@@ -203,7 +200,6 @@ public class BookService {
     /**
      * 删除对应电子书
      * @param id 对应电子书id
-     * @param uploadDir
      * @return 删除成功返回1 失败返回0
      */
     @Transactional
@@ -229,9 +225,7 @@ public class BookService {
      * @param id 对应电子书id
      * @param title 修改后的名称
      * @param author 修改后的作家
-     * @param coverFile
      * @param categoryId 修改后的分类
-     * @param uploadDir
      * @return 返回修改后的信息
      * @throws IOException
      */
@@ -259,7 +253,7 @@ public class BookService {
                 if (oldFile.exists()) oldFile.delete();
                 book.setCoverPath(newPath.getPath());
             } catch (IOException e) {
-                e.printStackTrace();
+                e.fillInStackTrace();
                 return ResponseEntity.status(500).body("封面保存失败" + e.getMessage());
             }
         }
@@ -275,7 +269,6 @@ public class BookService {
     /**
      * 搜索电子书
      * @param keyword 搜索电子书的关键词
-     * @param pageable
      * @return 返回按照关键词搜索后的电子书
      */
     @Transactional
@@ -286,7 +279,6 @@ public class BookService {
     /**\
      * 通过分类查找电子书
      * @param categoryId 对应分类
-     * @param pageable
      * @return 返回对应分类的电子书
      */
     @Transactional

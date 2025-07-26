@@ -1,20 +1,15 @@
 package com.example.kindle.controller;
 
-import com.example.kindle.entity.Book;
 import com.example.kindle.entity.Category;
 import com.example.kindle.repository.CategoryRepository;
 import com.example.kindle.service.CategoryService;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.beans.Transient;
 import java.util.List;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/category")
@@ -53,6 +48,6 @@ public class CategoryController {
     @Transactional
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteCategory(@PathVariable Long id) {
-        return categoryService.deteleCategory(id);
+        return categoryService.deleteCategory(id);
     }
 }
