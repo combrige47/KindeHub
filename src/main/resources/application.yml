@@ -19,10 +19,23 @@ spring:
     properties:
       hibernate:
         format_sql: true   # ??? SQL ??
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: 3119717318@qq.com
+    password: luscaczpesrzdeji
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 # ?????????????? uploads ????
 file:
   upload-dir: uploads/
   ebook-dir: uploads/ebook/
   cover-dir: uploads/cover/
+
+
 

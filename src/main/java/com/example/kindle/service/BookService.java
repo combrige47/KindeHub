@@ -18,7 +18,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.mail.MessagingException;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
@@ -37,11 +39,13 @@ public class BookService {
     private String ebookDir; // 电子书文件和封面图片将保存在这里
     @Value("${file.cover-dir}")
     private String coverDir;
+    private final EmailService emailService;
     //构造
-    public BookService(BookRepository bookRepository, CategoryRepository categoryRepository, EbookProcessorFactory ebookProcessorFactory) {
+    public BookService(BookRepository bookRepository, CategoryRepository categoryRepository, EbookProcessorFactory ebookProcessorFactory,EmailService emailService) {
         this.bookRepository = bookRepository;
         this.categoryRepository = categoryRepository;
         this.ebookProcessorFactory = ebookProcessorFactory;
+        this.emailService = emailService;
     }
 
     /**
@@ -291,4 +295,24 @@ public class BookService {
         return ResponseEntity.ok(books);
     }
 
+    /**
+     * 将电子书发送到Kindle邮箱
+     * @param bookId 书籍ID
+     * @param kindleEmail Kindle邮箱地址
+     * @throws MessagingException 邮件发送异常
+     * @throws FileNotFoundException 文件未找到异常
+     */
+    public void sendToKindle(Long bookId, String kindleEmail) throws MessagingException, FileNotFoundException {
+        Book book = bookRepository.findById(bookId)
+            .orElseThrow(() -> new IllegalArgumentException("书籍不存在: " + bookId));
+        
+        String filePath = book.getFilePath();
+        File epubFile = new File(filePath);
+        
+        if (!epubFile.exists()) {
+            throw new FileNotFoundException("电子书文件不存在: " + filePath);
+        }
+        
+        emailService.sendEpubToKindle(kindleEmail, "Kindle电子书: " + book.getTitle(), filePath);
+    }
 }

@@ -16,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 
 import java.io.IOException;
 import java.util.*;
+import jakarta.mail.MessagingException;
+import java.io.FileNotFoundException;
 
 @RestController
 @RequestMapping("/book")
@@ -23,12 +25,18 @@ public class BookController {
     private final BookService bookService;
 
     @Value("${file.upload-dir}")
-    private String uploadDir;
+    private String uploadDir;   //文件下载路径
 
     public BookController(BookRepository bookRepository , CategoryRepository categoryRepository, BookService bookService) {
         this.bookService = bookService;
     }
 
+    /**
+     * 上传ebook
+     * @param ebookFile 电子书文件
+     * @param categoryIds 书籍所属分类
+     * @return 返回对应Book类
+     */
     @PostMapping("/up")
     public Book upBook(
             @RequestParam("ebook") MultipartFile ebookFile,
@@ -123,6 +131,29 @@ public class BookController {
     ){
         Pageable pageable = PageRequest.of(page, size, Sort.by("id").descending());
         return bookService.searchBooksByCategory(categoryId,pageable);
+    }
+
+    /**
+     * 将电子书发送到Kindle邮箱
+     * @param bookId 书籍ID
+     * @param kindleEmail Kindle邮箱地址
+     * @return 发送结果
+     */
+    @PostMapping("/send-to-kindle/{bookId}")
+    public ResponseEntity<String> sendToKindle(
+            @PathVariable Long bookId,
+            @RequestParam String kindleEmail
+    ) {
+        try {
+            bookService.sendToKindle(bookId, kindleEmail);
+            return ResponseEntity.ok("电子书已成功发送到Kindle邮箱: " + kindleEmail);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (FileNotFoundException e) {
+            return ResponseEntity.status(404).body(e.getMessage());
+        } catch (MessagingException e) {
+            return ResponseEntity.status(500).body("发送邮件失败: " + e.getMessage());
+        }
     }
 }
 
